@@ -1,16 +1,15 @@
-// Example usage in your application
+// Example usage in your application - App.jsx
 
 import React, { useState, useCallback } from 'react';
-import MapComponent from './components/MapComponent';
-import type { GeoJsonLayer } from './types/map.types';
+import MapComponent from './components/MapComponent.jsx';
 
 // Example parent component
-const App: React.FC = () => {
-    const [selectedEntity, setSelectedEntity] = useState<any>(null);
-    const [selectedRowIndex, setSelectedRowIndex] = useState<string | number | undefined>();
+const App = () => {
+    const [selectedEntity, setSelectedEntity] = useState(null);
+    const [selectedRowIndex, setSelectedRowIndex] = useState(undefined);
 
     // Example GeoJSON data
-    const sampleMainLayer: GeoJsonLayer = {
+    const sampleMainLayer = {
         type: 'FeatureCollection',
         features: [
             {
@@ -46,22 +45,23 @@ const App: React.FC = () => {
         ],
     };
 
-    const handleEntitySelection = useCallback((entity: any) => {
+    const handleEntitySelection = useCallback((entity) => {
         setSelectedEntity(entity);
         console.log('Selected entity:', entity);
     }, []);
 
-    const handlePolygonDraw = useCallback((wkt: string | null) => {
+    const handlePolygonDraw = useCallback((wkt) => {
         if (wkt) {
             console.log('Drawn polygon WKT:', wkt);
             // Send to your external function
+            // For example: yourExternalFunction(wkt);
         } else {
             console.log('Drawing cleared');
         }
     }, []);
 
     // Custom entity color function
-    const entityColor = useCallback((entity: any, defaultColor: string) => {
+    const entityColor = useCallback((entity, defaultColor) => {
         const isWorkedOn = entity['עבר עבודה'];
 
         return {
@@ -116,7 +116,9 @@ const App: React.FC = () => {
                 {selectedEntity && (
                     <div className="mt-4 p-2 bg-gray-100 rounded">
                         <p className="text-sm font-semibold">ישות נבחרת:</p>
-                        <p className="text-xs">{JSON.stringify(selectedEntity, null, 2)}</p>
+                        <pre className="text-xs overflow-auto max-h-32">
+              {JSON.stringify(selectedEntity, null, 2)}
+            </pre>
                     </div>
                 )}
             </div>
@@ -126,26 +128,31 @@ const App: React.FC = () => {
 
 export default App;
 
-// package.json dependencies you'll need to install:
 /*
-{
-  "dependencies": {
-    "ol": "^8.2.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "lucide-react": "^0.292.0"
-  },
-  "devDependencies": {
-    "@types/ol": "^6.5.3",
-    "typescript": "^5.0.0"
-  }
-}
+Installation commands:
+npm install ol lucide-react
+
+File structure:
+src/
+├── components/
+│   ├── MapComponent.jsx
+│   ├── MapControls.jsx
+│   ├── CoordinateDisplay.jsx
+│   └── BaseLayerSelector.jsx
+├── services/
+│   ├── wmts.service.js
+│   ├── layer-manager.service.js
+│   └── drawing.service.js
+├── hooks/
+│   └── useMapInitialization.js
+├── constants/
+│   └── map.constants.js
+└── App.jsx
+
+CSS you might want to add to your global styles:
 */
 
-// Installation commands:
-// npm install ol @types/ol lucide-react
-
-// CSS you might want to add to your global styles:
+/* Add this to your CSS file (e.g., index.css or App.css): */
 /*
 .ol-viewport {
   border-radius: 8px;

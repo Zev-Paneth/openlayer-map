@@ -1,25 +1,20 @@
-// src/services/layer-manager.service.ts
+// src/services/layer-manager.service.js
 
-import { Vector as VectorLayer, Tile as TileLayer } from 'ol/layer';
-import { Vector as VectorSource, WMTS } from 'ol/source';
+import { Vector as VectorLayer } from 'ol/layer';
+import { Vector as VectorSource } from 'ol/source';
 import { GeoJSON } from 'ol/format';
 import { Style, Fill, Stroke, Circle } from 'ol/style';
-import { Feature } from 'ol';
-import { Point, LineString, Polygon } from 'ol/geom';
-import type { GeoJsonLayer, StyleConfig } from '../types/map.types';
-import { DEFAULT_STYLES } from '../constants/map.constants';
+import { DEFAULT_STYLES } from '../constants/map.constants.js';
 
 export class LayerManager {
-    private geoJsonFormat = new GeoJSON();
+    constructor() {
+        this.geoJsonFormat = new GeoJSON();
+    }
 
     /**
      * Creates vector layer from GeoJSON data
      */
-    createVectorLayer(
-        geoJsonData: GeoJsonLayer,
-        layerName: string,
-        styleFunction?: (feature: Feature, defaultColor: string) => StyleConfig
-    ): VectorLayer<VectorSource> {
+    createVectorLayer(geoJsonData, layerName, styleFunction) {
         const vectorSource = new VectorSource({
             features: this.geoJsonFormat.readFeatures(geoJsonData, {
                 featureProjection: 'EPSG:4326',
@@ -38,13 +33,10 @@ export class LayerManager {
     /**
      * Creates OpenLayers style from configuration
      */
-    private createFeatureStyle(
-        feature: Feature,
-        styleFunction?: (feature: Feature, defaultColor: string) => StyleConfig
-    ): Style {
+    createFeatureStyle(feature, styleFunction) {
         const defaultColor = DEFAULT_STYLES.FILL_COLOR;
 
-        let styleConfig: StyleConfig = {
+        let styleConfig = {
             fillColor: defaultColor,
             fillOpacity: DEFAULT_STYLES.FILL_OPACITY,
             strokeColor: DEFAULT_STYLES.STROKE_COLOR,
@@ -123,7 +115,7 @@ export class LayerManager {
     /**
      * Converts hex color to rgba with opacity
      */
-    private hexToRgba(hex: string, opacity: number): string {
+    hexToRgba(hex, opacity) {
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);
@@ -133,7 +125,7 @@ export class LayerManager {
     /**
      * Highlights selected feature
      */
-    highlightFeature(layer: VectorLayer<VectorSource>, featureId: string | number, idColumn: string): void {
+    highlightFeature(layer, featureId, idColumn) {
         const source = layer.getSource();
         if (!source) return;
 
@@ -152,7 +144,7 @@ export class LayerManager {
     /**
      * Creates highlight style for selected features
      */
-    private createHighlightStyle(): Style {
+    createHighlightStyle() {
         return new Style({
             fill: new Fill({
                 color: this.hexToRgba(DEFAULT_STYLES.SELECTED_FILL_COLOR, DEFAULT_STYLES.HIGHLIGHT_FILL_OPACITY),
@@ -177,7 +169,7 @@ export class LayerManager {
     /**
      * Fits map view to layer extent
      */
-    fitToLayerExtent(map: any, layer: VectorLayer<VectorSource>): void {
+    fitToLayerExtent(map, layer) {
         const source = layer.getSource();
         if (!source) return;
 

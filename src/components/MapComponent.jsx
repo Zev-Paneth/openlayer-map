@@ -1,50 +1,43 @@
-// src/components/ImprovedMapComponent.tsx
+// src/components/MapComponent.jsx
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Vector as VectorLayer, Tile as TileLayer } from 'ol/layer';
 import { Vector as VectorSource, WMTS } from 'ol/source';
 
-import type { MapProps } from '../types/map.types';
-import { useMapInitialization, useMapControls, useCoordinateDisplay, useFeatureSelection } from '../hooks/useMapInitialization';
-import { LayerManager } from '../services/layer-manager.service';
-import { WMTSService } from '../services/wmts.service';
-import { WMTSConfigService } from '../services/wmts-config.service';
-import { DrawingService } from '../services/drawing.service';
-import { MapControls } from './MapControls';
-import { CoordinateDisplay } from './CoordinateDisplay';
-import { BaseLayerSelector } from './BaseLayerSelector';
-import { MAP_CONSTANTS, DRAWING_MODES } from '../constants/map.constants';
+import { useMapInitialization, useMapControls, useCoordinateDisplay, useFeatureSelection } from '../hooks/useMapInitialization.js';
+import { LayerManager } from '../services/layer-manager.service.js';
+import { WMTSService } from '../services/wmts.service.js';
+import { DrawingService } from '../services/drawing.service.js';
+import { MapControls } from './MapControls.jsx';
+import { CoordinateDisplay } from './CoordinateDisplay.jsx';
+import { BaseLayerSelector } from './BaseLayerSelector.jsx';
+import { MAP_CONSTANTS, DRAWING_MODES, BASE_LAYER_CONFIGS } from '../constants/map.constants.js';
 
 const MAP_ELEMENT_ID = 'openlayers-map';
 
-export const ImprovedMapComponent: React.FC<MapProps> = ({
-                                                             mainLayer,
-                                                             layerCenter,
-                                                             selectedRowIndex,
-                                                             setSelectedEntity,
-                                                             layerName = 'layer',
-                                                             otherLayersGeometry = null,
-                                                             onPolygonDraw = null,
-                                                             entityIdColumn = MAP_CONSTANTS.DEFAULT_ENTITY_ID_COLUMN,
-                                                             entityColor = null,
-                                                         }) => {
+export const MapComponent = ({
+                                 mainLayer,
+                                 layerCenter,
+                                 selectedRowIndex,
+                                 setSelectedEntity,
+                                 layerName = 'layer',
+                                 otherLayersGeometry = null,
+                                 onPolygonDraw = null,
+                                 entityIdColumn = MAP_CONSTANTS.DEFAULT_ENTITY_ID_COLUMN,
+                                 entityColor = null,
+                             }) => {
     // Services
     const layerManager = useMemo(() => new LayerManager(), []);
     const drawingService = useMemo(() => new DrawingService(), []);
 
     // State
-    const [selectedBaseLayer, setSelectedBaseLayer] = useState<string>('');
-    const [currentDrawingMode, setCurrentDrawingMode] = useState<keyof typeof DRAWING_MODES>(DRAWING_MODES.NONE);
-    const [baseLayers, setBaseLayers] = useState<Record<string, TileLayer<WMTS>>>({});
-    const [baseLayerConfigs, setBaseLayerConfigs] = useState<Array<{
-        id: string;
-        name: string;
-        url: string;
-    }>>([]);
-    const [mainVectorLayer, setMainVectorLayer] = useState<VectorLayer<VectorSource> | null>(null);
-    const [otherVectorLayer, setOtherVectorLayer] = useState<VectorLayer<VectorSource> | null>(null);
+    const [selectedBaseLayer, setSelectedBaseLayer] = useState('satellite');
+    const [currentDrawingMode, setCurrentDrawingMode] = useState(DRAWING_MODES.NONE);
+    const [baseLayers, setBaseLayers] = useState({});
+    const [mainVectorLayer, setMainVectorLayer] = useState(null);
+    const [otherVectorLayer, setOtherVectorLayer] = useState(null);
     const [isLoadingLayers, setIsLoadingLayers] = useState(true);
-    const [layerError, setLayerError] = useState<string | null>(null);
+    const [layerError, setLayerError] = useState(null);
 
     // Hooks
     const { map, isMapReady } = useMapInitialization(
@@ -59,7 +52,7 @@ export const ImprovedMapComponent: React.FC<MapProps> = ({
         setSelectedEntity(featureProperties);
     }, [setSelectedEntity]));
 
-    // Initialize base layers from server
+    // Initialize base layers
     useEffect(() => {
         if (!isMapReady || !map) return;
 
@@ -68,82 +61,57 @@ export const ImprovedMapComponent: React.FC<MapProps> = ({
             setLayerError(null);
 
             try {
-                // Get configured base layers from your server
-                const configuredLayers = await WMTSConfigService.getConfiguredBaseLayers();
+                // TODO: Replace with actual WMTS URLs from your server
+                const layerConfigs = {
+                    osm: {
+                        ...BASE_LAYER_CONFIGS.OSM,
+                        url: 'https://your-server.com/wmts/osm/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.jpeg',
+                    },
+                    satellite: {
+                        ...BASE_LAYER_CONFIGS.SATELLITE,
+                        url: 'https://your-server.com/wmts/satellite/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.jpeg',
+                    },
+                    roads: {
+                        ...BASE_LAYER_CONFIGS.ROADS,
+                        url: 'https://your-server.com/wmts/roads/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.jpeg',
+                    },
+                };
 
-                if (configuredLayers.length === 0) {
-                    throw new Error('No base layers configured on server');
-                }
+                const layers = {};
 
-                setBaseLayerConfigs(configuredLayers.map(layer => ({
-                    id: layer.id,
-                    name: layer.name,
-                    url: layer.url,
-                })));
-
-                const layers: Record<string, TileLayer<WMTS>> = {};
-
-                // Create WMTS layers
-                for (const config of configuredLayers) {
+                Object.entries(layerConfigs).forEach(([key, config]) => {
                     try {
-                        const layer = WMTSService.createWMTSLayer({
-                            id: config.id,
-                            name: config.name,
-                            url: WMTSConfigService.formatWMTSUrl(config.url, 'YOUR_TOKEN'),
-                            visible: false,
-                        });
-
-                        layers[config.id] = layer;
+                        const layer = WMTSService.createWMTSLayer(config);
+                        layers[key] = layer;
                         map.addLayer(layer);
                     } catch (error) {
-                        console.warn(`Failed to create layer ${config.id}:`, error);
+                        console.warn(`Failed to create layer ${key}:`, error);
                     }
-                }
+                });
 
                 setBaseLayers(layers);
 
-                // Set first available layer as default
-                const firstLayerId = configuredLayers[0]?.id;
-                if (firstLayerId && layers[firstLayerId]) {
-                    layers[firstLayerId].setVisible(true);
-                    setSelectedBaseLayer(firstLayerId);
+                // Set default visible layer
+                if (layers[selectedBaseLayer]) {
+                    layers[selectedBaseLayer].setVisible(true);
                 }
-
             } catch (error) {
                 console.error('Failed to initialize base layers:', error);
-                setLayerError(error instanceof Error ? error.message : 'Failed to load base layers');
-
-                // Fallback to a simple base layer
-                const fallbackLayer = new TileLayer({
-                    source: new WMTS({
-                        url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Fallback to OSM if WMTS fails
-                        layer: 'osm',
-                        matrixSet: 'EPSG:3857',
-                        format: 'image/png',
-                        projection: 'EPSG:3857',
-                        tileGrid: undefined, // Will use default
-                        style: 'default',
-                    }),
-                    visible: true,
-                });
-
-                map.addLayer(fallbackLayer);
-                setBaseLayers({ fallback: fallbackLayer as any });
-                setSelectedBaseLayer('fallback');
+                setLayerError('Failed to load base layers');
             } finally {
                 setIsLoadingLayers(false);
             }
         };
 
         initializeBaseLayers();
-    }, [isMapReady, map]);
+    }, [isMapReady, map, selectedBaseLayer]);
 
-    // Handle main layer with error handling
+    // Handle main layer
     useEffect(() => {
         if (!isMapReady || !map || !mainLayer) return;
 
         try {
-            const styleFunction = entityColor ? (feature: any, defaultColor: string) => {
+            const styleFunction = entityColor ? (feature, defaultColor) => {
                 try {
                     return entityColor(feature.getProperties(), defaultColor);
                 } catch (error) {
@@ -199,7 +167,7 @@ export const ImprovedMapComponent: React.FC<MapProps> = ({
         }
     }, [isMapReady, map, otherLayersGeometry, layerManager]);
 
-    // Handle selected feature with better error handling
+    // Handle selected feature
     useEffect(() => {
         if (!mainVectorLayer || !selectedRowIndex) return;
 
@@ -224,13 +192,13 @@ export const ImprovedMapComponent: React.FC<MapProps> = ({
                             // Handle different geometry types
                             switch (geometryType) {
                                 case 'Point':
-                                    const center = extent.slice(0, 2) as [number, number];
+                                    { const center = extent.slice(0, 2);
                                     map.getView().animate({
                                         center,
                                         zoom: 17,
                                         duration: MAP_CONSTANTS.ANIMATION_DURATION,
                                     });
-                                    break;
+                                    break; }
 
                                 case 'LineString':
                                 case 'MultiLineString':
@@ -271,7 +239,7 @@ export const ImprovedMapComponent: React.FC<MapProps> = ({
     }, [selectedRowIndex, mainVectorLayer, entityIdColumn, layerManager, map]);
 
     // Handle base layer switching
-    const handleBaseLayerChange = useCallback((layerId: string) => {
+    const handleBaseLayerChange = useCallback((layerId) => {
         try {
             Object.values(baseLayers).forEach(layer => layer.setVisible(false));
 
@@ -285,7 +253,7 @@ export const ImprovedMapComponent: React.FC<MapProps> = ({
     }, [baseLayers]);
 
     // Handle drawing mode changes
-    const handleDrawingModeChange = useCallback((mode: keyof typeof DRAWING_MODES) => {
+    const handleDrawingModeChange = useCallback((mode) => {
         if (!map) return;
 
         try {
@@ -352,13 +320,23 @@ export const ImprovedMapComponent: React.FC<MapProps> = ({
     }, [isMapReady, map, drawingService]);
 
     // Prepare base layer selector data
-    const baseLayerSelectorData = useMemo(() =>
-        baseLayerConfigs.map(config => ({
-            id: config.id,
-            name: config.name,
-            active: selectedBaseLayer === config.id,
-        })), [baseLayerConfigs, selectedBaseLayer]
-    );
+    const baseLayerSelectorData = useMemo(() => [
+        {
+            id: 'osm',
+            name: BASE_LAYER_CONFIGS.OSM.name,
+            active: selectedBaseLayer === 'osm',
+        },
+        {
+            id: 'satellite',
+            name: BASE_LAYER_CONFIGS.SATELLITE.name,
+            active: selectedBaseLayer === 'satellite',
+        },
+        {
+            id: 'roads',
+            name: BASE_LAYER_CONFIGS.ROADS.name,
+            active: selectedBaseLayer === 'roads',
+        },
+    ], [selectedBaseLayer]);
 
     return (
         <div className="relative w-full h-full">
@@ -420,4 +398,4 @@ export const ImprovedMapComponent: React.FC<MapProps> = ({
     );
 };
 
-export default ImprovedMapComponent;
+export default MapComponent;

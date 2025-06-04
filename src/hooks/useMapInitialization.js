@@ -1,17 +1,17 @@
-// src/hooks/useMapInitialization.ts
+// src/hooks/useMapInitialization.js
 
 import { useEffect, useRef, useState } from 'react';
 import { Map, View } from 'ol';
 import { defaults as defaultControls } from 'ol/control';
 import { defaults as defaultInteractions } from 'ol/interaction';
-import { MAP_CONSTANTS } from '../constants/map.constants';
+import { MAP_CONSTANTS } from '../constants/map.constants.js';
 
 export const useMapInitialization = (
-    mapElementId: string,
-    center: [number, number] = MAP_CONSTANTS.DEFAULT_CENTER,
-    zoom: number = MAP_CONSTANTS.DEFAULT_ZOOM
+    mapElementId,
+    center = MAP_CONSTANTS.DEFAULT_CENTER,
+    zoom = MAP_CONSTANTS.DEFAULT_ZOOM
 ) => {
-    const mapRef = useRef<Map | null>(null);
+    const mapRef = useRef(null);
     const [isMapReady, setIsMapReady] = useState(false);
 
     useEffect(() => {
@@ -48,15 +48,9 @@ export const useMapInitialization = (
     return { map: mapRef.current, isMapReady };
 };
 
-// src/hooks/useMapControls.ts
-
-import { useCallback } from 'react';
-import { Map } from 'ol';
-import { Vector as VectorLayer } from 'ol/layer';
-import { Vector as VectorSource } from 'ol/source';
-
-export const useMapControls = (map: Map | null) => {
-    const zoomIn = useCallback(() => {
+// useMapControls hook
+export const useMapControls = (map) => {
+    const zoomIn = () => {
         if (map) {
             const view = map.getView();
             const currentZoom = view.getZoom() || MAP_CONSTANTS.DEFAULT_ZOOM;
@@ -65,9 +59,9 @@ export const useMapControls = (map: Map | null) => {
                 duration: 300,
             });
         }
-    }, [map]);
+    };
 
-    const zoomOut = useCallback(() => {
+    const zoomOut = () => {
         if (map) {
             const view = map.getView();
             const currentZoom = view.getZoom() || MAP_CONSTANTS.DEFAULT_ZOOM;
@@ -76,9 +70,9 @@ export const useMapControls = (map: Map | null) => {
                 duration: 300,
             });
         }
-    }, [map]);
+    };
 
-    const fitToLayer = useCallback((layer: VectorLayer<VectorSource>) => {
+    const fitToLayer = (layer) => {
         if (map && layer) {
             const source = layer.getSource();
             if (source) {
@@ -92,20 +86,14 @@ export const useMapControls = (map: Map | null) => {
                 }
             }
         }
-    }, [map]);
+    };
 
     return { zoomIn, zoomOut, fitToLayer };
 };
 
-// src/hooks/useCoordinateDisplay.ts
-
-import { useEffect, useState } from 'react';
-import { Map } from 'ol';
-import { transform } from 'ol/proj';
-import type { CoordinateDisplay } from '../types/map.types';
-
-export const useCoordinateDisplay = (map: Map | null) => {
-    const [coordinates, setCoordinates] = useState<CoordinateDisplay>({
+// useCoordinateDisplay hook
+export const useCoordinateDisplay = (map) => {
+    const [coordinates, setCoordinates] = useState({
         latitude: 0,
         longitude: 0,
         zoom: MAP_CONSTANTS.DEFAULT_ZOOM,
@@ -120,7 +108,7 @@ export const useCoordinateDisplay = (map: Map | null) => {
             const zoom = view.getZoom() || MAP_CONSTANTS.DEFAULT_ZOOM;
 
             if (center) {
-                const [longitude, latitude] = transform(center, 'EPSG:4326', 'EPSG:4326');
+                const [longitude, latitude] = center; // Already in EPSG:4326
                 setCoordinates({
                     latitude: parseFloat(latitude.toFixed(6)),
                     longitude: parseFloat(longitude.toFixed(6)),
@@ -146,25 +134,14 @@ export const useCoordinateDisplay = (map: Map | null) => {
     return coordinates;
 };
 
-// src/hooks/useFeatureSelection.ts
-
-import { useEffect, useCallback } from 'react';
-import { Map } from 'ol';
-import { Vector as VectorLayer } from 'ol/layer';
-import { Vector as VectorSource } from 'ol/source';
-import { Select } from 'ol/interaction';
-import { click } from 'ol/events/condition';
-
-export const useFeatureSelection = (
-    map: Map | null,
-    onFeatureSelect?: (feature: any) => void
-) => {
-    useEffect(() => {
+// useFeatureSelection hook
+export const useFeatureSelection = (map, onFeatureSelect) => {
+    useEffect(async () => {
         if (!map) return;
 
-        const selectInteraction = new Select({
-            condition: click,
-            layers: (layer) => layer instanceof VectorLayer,
+        const selectInteraction = new (await import('ol/interaction')).Select({
+            condition: (await import('ol/events/condition')).click,
+            layers: async (layer) => layer instanceof (await import('ol/layer')).Vector,
         });
 
         selectInteraction.on('select', (event) => {
@@ -183,11 +160,7 @@ export const useFeatureSelection = (
         };
     }, [map, onFeatureSelect]);
 
-    const selectFeatureById = useCallback((
-        layer: VectorLayer<VectorSource>,
-        featureId: string | number,
-        idColumn: string
-    ) => {
+    const selectFeatureById = (layer, featureId, idColumn) => {
         if (!layer) return;
 
         const source = layer.getSource();
@@ -200,7 +173,7 @@ export const useFeatureSelection = (
                 return false; // Stop iteration
             }
         });
-    }, []);
+    };
 
     return { selectFeatureById };
 };

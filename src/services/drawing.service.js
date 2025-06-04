@@ -1,29 +1,25 @@
-// src/services/drawing.service.ts
+// src/services/drawing.service.js
 
 import { Draw, Modify, Snap } from 'ol/interaction';
 import { Vector as VectorLayer } from 'ol/layer';
 import { Vector as VectorSource } from 'ol/source';
 import { Style, Fill, Stroke, Circle } from 'ol/style';
 import { WKT } from 'ol/format';
-import { Feature } from 'ol';
-import type { Geometry } from 'ol/geom';
-import { DRAWING_MODES, DEFAULT_STYLES } from '../constants/map.constants';
+import { DRAWING_MODES } from '../constants/map.constants.js';
 
 export class DrawingService {
-    private wktFormat = new WKT();
-    private drawInteraction: Draw | null = null;
-    private modifyInteraction: Modify | null = null;
-    private snapInteraction: Snap | null = null;
-    private drawingLayer: VectorLayer<VectorSource>;
-
     constructor() {
+        this.wktFormat = new WKT();
+        this.drawInteraction = null;
+        this.modifyInteraction = null;
+        this.snapInteraction = null;
         this.drawingLayer = this.createDrawingLayer();
     }
 
     /**
      * Creates dedicated layer for drawing
      */
-    private createDrawingLayer(): VectorLayer<VectorSource> {
+    createDrawingLayer() {
         const source = new VectorSource();
 
         return new VectorLayer({
@@ -35,7 +31,7 @@ export class DrawingService {
     /**
      * Creates style for drawing interactions
      */
-    private createDrawingStyle(): Style {
+    createDrawingStyle() {
         return new Style({
             fill: new Fill({
                 color: 'rgba(255, 255, 255, 0.2)',
@@ -60,16 +56,12 @@ export class DrawingService {
     /**
      * Starts drawing interaction
      */
-    startDrawing(
-        map: any,
-        type: keyof typeof DRAWING_MODES,
-        onDrawEnd?: (wkt: string) => void
-    ): void {
+    startDrawing(map, type, onDrawEnd) {
         this.stopDrawing(map);
 
         if (type === DRAWING_MODES.NONE) return;
 
-        let geometryType: string;
+        let geometryType;
         switch (type) {
             case DRAWING_MODES.POLYGON:
                 geometryType = 'Polygon';
@@ -85,8 +77,8 @@ export class DrawingService {
         }
 
         this.drawInteraction = new Draw({
-            source: this.drawingLayer.getSource()!,
-            type: geometryType as any,
+            source: this.drawingLayer.getSource(),
+            type: geometryType,
             style: this.createDrawingStyle(),
         });
 
@@ -103,12 +95,12 @@ export class DrawingService {
 
         // Add modify interaction for editing drawn features
         this.modifyInteraction = new Modify({
-            source: this.drawingLayer.getSource()!,
+            source: this.drawingLayer.getSource(),
         });
 
         // Add snap interaction for better user experience
         this.snapInteraction = new Snap({
-            source: this.drawingLayer.getSource()!,
+            source: this.drawingLayer.getSource(),
         });
 
         map.addInteraction(this.drawInteraction);
@@ -124,7 +116,7 @@ export class DrawingService {
     /**
      * Stops all drawing interactions
      */
-    stopDrawing(map: any): void {
+    stopDrawing(map) {
         if (this.drawInteraction) {
             map.removeInteraction(this.drawInteraction);
             this.drawInteraction = null;
@@ -144,7 +136,7 @@ export class DrawingService {
     /**
      * Clears all drawn features
      */
-    clearDrawing(): void {
+    clearDrawing() {
         const source = this.drawingLayer.getSource();
         if (source) {
             source.clear();
@@ -154,7 +146,7 @@ export class DrawingService {
     /**
      * Converts geometry to WKT format
      */
-    private geometryToWKT(geometry: Geometry): string {
+    geometryToWKT(geometry) {
         // Transform to WGS84 if needed
         const clonedGeometry = geometry.clone();
         clonedGeometry.transform('EPSG:4326', 'EPSG:4326'); // Already in WGS84
@@ -165,21 +157,21 @@ export class DrawingService {
     /**
      * Gets the drawing layer
      */
-    getDrawingLayer(): VectorLayer<VectorSource> {
+    getDrawingLayer() {
         return this.drawingLayer;
     }
 
     /**
      * Checks if currently drawing
      */
-    isDrawing(): boolean {
+    isDrawing() {
         return this.drawInteraction !== null;
     }
 
     /**
      * Formats polygon coordinates to WKT string as specified
      */
-    formatPolygonToWKT(coordinates: number[][]): string {
+    formatPolygonToWKT(coordinates) {
         const coordString = coordinates
             .map(coord => `${coord[0]} ${coord[1]}`)
             .join(', ');

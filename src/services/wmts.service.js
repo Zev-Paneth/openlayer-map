@@ -1,20 +1,19 @@
-// src/services/wmts.service.ts
+// src/services/wmts.service.js
 
 import { WMTS, TileGrid } from 'ol/source';
 import { Tile as TileLayer } from 'ol/layer';
 import WMTSTileGrid from 'ol/tilegrid/WMTS';
 import { get as getProjection } from 'ol/proj';
-import { MAP_CONSTANTS } from '../constants/map.constants';
-import type { WMTSLayerConfig } from '../types/map.types';
+import { MAP_CONSTANTS } from '../constants/map.constants.js';
 
 export class WMTSService {
-    private static readonly TOKEN = 'YOUR_TOKEN_HERE'; // Replace with actual token
+    static TOKEN = 'YOUR_TOKEN_HERE'; // Replace with actual token
 
     /**
      * Creates WMTS tile grid for WorldCRS84
      */
-    private static createTileGrid(): WMTSTileGrid {
-        const projection = getProjection('EPSG:4326')!;
+    static createTileGrid() {
+        const projection = getProjection('EPSG:4326');
         const projectionExtent = projection.getExtent();
         const size = Math.max(
             projectionExtent[2] - projectionExtent[0],
@@ -39,7 +38,7 @@ export class WMTSService {
     /**
      * Creates WMTS layer from configuration
      */
-    static createWMTSLayer(config: WMTSLayerConfig): TileLayer<WMTS> {
+    static createWMTSLayer(config) {
         const tileGrid = this.createTileGrid();
 
         // Format URL template for WMTS
@@ -69,7 +68,7 @@ export class WMTSService {
     /**
      * Updates token for all WMTS sources
      */
-    static updateToken(layers: TileLayer<WMTS>[], newToken: string): void {
+    static updateToken(layers, newToken) {
         layers.forEach(layer => {
             const source = layer.getSource();
             if (source instanceof WMTS) {
@@ -87,7 +86,7 @@ export class WMTSService {
     /**
      * Validates WMTS URL format
      */
-    static validateWMTSUrl(url: string): boolean {
+    static validateWMTSUrl(url) {
         const requiredParams = ['{TileMatrixSet}', '{TileMatrix}', '{TileCol}', '{TileRow}'];
         return requiredParams.every(param => url.includes(param));
     }
